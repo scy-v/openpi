@@ -32,6 +32,7 @@ def create_torch_dataloader(
     if data_config.repo_id is None:
         raise ValueError("Data config must have a repo_id")
     dataset = _data_loader.create_torch_dataset(data_config, action_horizon, model_config)
+    
     dataset = _data_loader.TransformedDataset(
         dataset,
         [
@@ -41,6 +42,7 @@ def create_torch_dataloader(
             RemoveStrings(),
         ],
     )
+
     if max_frames is not None and max_frames < len(dataset):
         num_batches = max_frames // batch_size
         shuffle = True

@@ -1,0 +1,47 @@
+task:
+  # description: "Pick up the tape measure and put it into the trash bin."
+  # description: "Pick up the ball and put it into the trash bin."
+  description: "Pick up the green cube and put it into the trash bin."
+  # description: "Pick up the bottle and put it into the trash bin."
+  # description: "Pick up the red cylinder and put it into the trash bin."
+  # description: "Pick up the yellow cube and put it into the trash bin."
+  # description: "Pick up the white handle and put it into the trash bin."
+  # description: "Pick up the blue strip and put it into the trash bin."
+  # description: "Pick up the object on the table and put it into the trash bin."
+  # description: "Pick up the pink cube and put it into the trash bin."
+  # description: "Pick up the transparent beaker and put it into the trash bin."
+  # description: "Pour the water from one beaker into another."
+  # description: "Open the drawer, place the beaker inside, and close the drawer."
+  # description: "Open the cabinet, place the reagent bottle inside, and close the cabinet."
+
+video:
+  fps: 7  # camera fps for recording
+  visualize: False # whether to visualize the images during execution
+
+robot:
+  ip: "192.168.131.11" # robot_ip
+  gripper_port: "/dev/ur5e_left_gripper" # gripper_port
+  gripper_reverse: False  # If gripper moves opposite, flip this value
+  initial_pose: [3.141176223754883, -2.0031634769835414, 1.5802624861346644, -1.147901402120926, -1.571296517048971, -0.000146214162008107]
+  action_fps: 450
+  action_horizon: 10
+cameras:
+    wrist_cam_serial: "944622073455" # wrist camera serial number
+    exterior_cam_serial: "213522072373" # exterior camera serial number
+    fps: 15  # camera fps 
+
+model:
+  # name: "pi05_base"
+  name: "pi05_finetune_ur5e"
+  # checkpoint_dir: "/home/suchenyu/.cache/openpi/openpi-assets/checkpoints/pi05_base" # base model
+  # checkpoint_dir: "openpi/checkpoints/pi05_finetune_ur5e_4090/pick_greencube_into_trashbin_20251102_v02_action10/29999"  # opposite mid no object in bin. horizon 10
+  checkpoint_dir: "openpi/checkpoints/pi05_finetune_ur5e_4090/pick_greencube_into_trashbin_20251103_v03_action10/29999"  # left side horizon 10
+  # checkpoint_dir: "openpi/checkpoints/pi05_finetune_ur5e_4090/pick_greencube_into_trashbin_20251104_v04_action10/29999"  # right side horizon 10
+  # checkpoint_dir: "openpi/checkpoints/pi05_finetune_ur5e_4090/pick_greencube_into_trashbin_20251105_v05_action10/29999"  # opposite mid with object in bin. horizon 10
+  # checkpoint_dir: "openpi/checkpoints/pi05_finetune_ur5e_a800/pick_greencube_into_trashbin_20251103_v03_action50/34000"  #left side horizon 50
+  # checkpoint_dir: "openpi/checkpoints/pi05_finetune_ur5e_4090/pick_greencube_into_trashbin_20251103_v03_action50/29999"  #left side horizon 50
+  # checkpoint_dir: "openpi/checkpoints/pi05_finetune_ur5e_a800/pour_water_into_beaker_20251117_v01_action10/29999"  #left side horizon 10
+  # checkpoint_dir: "openpi/checkpoints/pi05_finetune_ur5e_4090/open_drawer_place_beaker_inside_close_drawer_20251119_v01_action10/29999"  #left side horizon 10
+  # checkpoint_dir: "openpi/checkpoints/pi05_finetune_ur5e_a800/open_cabinet_place_reagent_bottle_inside_close_cabinet_20251119_v01_action10/29999"  #left side horizon 10
+  # checkpoint_dir: "openpi/checkpoints/pi05_finetune_ur5e_4090/open_cabinet_place_reagent_bottle_inside_close_cabinet_20251119_v01_action10/29999"  #left side horizon 10
+  infer_fps: 8

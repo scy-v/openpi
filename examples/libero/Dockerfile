@@ -9,6 +9,9 @@
 FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04@sha256:2d913b09e6be8387e1a10976933642c73c840c0b735f0bf3c28d97fc9bc422e0
 COPY --from=ghcr.io/astral-sh/uv:0.5.1 /uv /uvx /bin/
 
+# setup a mirror
+ADD sources.list /etc/apt/
+
 RUN apt-get update && \
     apt-get install -y \
     make \
@@ -40,6 +43,11 @@ COPY ./examples/libero/requirements.txt /tmp/requirements.txt
 COPY ./third_party/libero/requirements.txt /tmp/requirements-libero.txt
 COPY ./packages/openpi-client/pyproject.toml /tmp/openpi-client/pyproject.toml
 
+# Set up proxy for downloading python
+ENV http_proxy="http://172.17.0.1:7890"
+ENV https_proxy="http://172.17.0.1:7890"
+ENV socks5_proxy="socks5://172.17.0.1:7890"
+
 # Install python dependencies.
 RUN uv venv --python 3.8 $UV_PROJECT_ENVIRONMENT
 RUN uv pip sync /tmp/requirements.txt /tmp/requirements-libero.txt /tmp/openpi-client/pyproject.toml --extra-index-url https://download.pytorch.org/whl/cu113 --index-strategy=unsafe-best-match
@@ -56,4 +64,5 @@ datasets: /app/third_party/libero/libero/datasets
 assets: /app/third_party/libero/libero/libero/assets
 EOF
 
-CMD ["/bin/bash", "-c", "source /.venv/bin/activate && python examples/libero/main.py $CLIENT_ARGS"]
+CMD ["/bin/bash", "-c", "source /.venv/bin/activate && exec bash"]
+# CMD ["/bin/bash", "-c", "source /.venv/bin/activate && python examples/libero/main.py $CLIENT_ARGS"]

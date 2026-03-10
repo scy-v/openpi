@@ -1,0 +1,33 @@
+task:
+  description: "Pick up the test tube brush."
+  # description: "Pick up the test tube brush and clean the test tube."
+
+video:
+  fps: 7  # camera fps for recording
+  visualize: True # whether to visualize the images during execution
+
+robot:
+  left_robot_ip: "192.168.131.12" # left robot_ip
+  right_robot_ip: "192.168.131.11" # right robot_ip
+  left_gripper_port: "/dev/ur7e_left_gripper" # gripper_port
+  right_gripper_port: "/dev/ur7e_right_gripper" # gripper_port
+  gripper_reverse: False  # If gripper moves opposite, flip this value
+  # left_initial_pose: [0.15039682388305664, -1.6110626659789027, -2.5577666759490967, -0.7846527856639405, 3.985585927963257, -0.21246177354921514] # left robot reset joint positions
+  left_initial_pose: [0.42725878953933716, -2.1260014973082484, -1.399522304534912, -3.0563417873778285, 4.630511283874512, 0.618490993976593] # left robot reset joint positions / fixed
+  right_initial_pose: [-0.13447505632509404, -1.5634546180120488, 2.659518305455343, -2.423399110833639, 2.339691638946533, 0.25420689582824707] # right robot reset joint positions
+  action_fps: 420
+  action_horizon: 10
+cameras:
+    left_wrist_cam_serial: "347622073802" # left wrist cam
+    right_wrist_cam_serial: "348122071700" # right wrist cam
+    exterior_cam_serial: "213522070689" # exterior cam
+    fps: 15  # camera fps 
+
+model:
+  name: "pi05_finetune_dual_ur"
+  # checkpoint_dir: "openpi/checkpoints/pi05_finetune_dual_ur_a800/pick_test_tube_brush_and_clean_test_tube_20251210_v01_50/29999"  
+  # checkpoint_dir: "openpi/checkpoints/pi05_finetune_dual_ur_a800/pick_test_tube_brush_and_clean_test_tube_20251210_v01_100/29999"  
+  # checkpoint_dir: "openpi/checkpoints/pi05_finetune_dual_ur_4090/pick_test_tube_brush_and_clean_test_tube_20251210_v01_100/29999"  
+  # checkpoint_dir: "openpi/checkpoints/pi05_finetune_dual_ur_a800/pick_test_tube_brush_20251217_v01_60/29999"  
+  checkpoint_dir: "openpi/checkpoints/pi05_finetune_dual_ur_a800/pick_test_tube_brush_20251217_v01_110/29999"  
+  infer_fps: 8

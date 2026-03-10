@@ -17,24 +17,25 @@ You can download the raw Libero datasets from https://huggingface.co/datasets/op
 The resulting dataset will get saved to the $HF_LEROBOT_HOME directory.
 Running this conversion script will take approximately 30 minutes.
 """
+import os
 
 import shutil
-
+from pathlib import Path
+os.environ["HF_LEROBOT_HOME"] = os.path.dirname(os.path.abspath(__file__))
 from lerobot.common.datasets.lerobot_dataset import HF_LEROBOT_HOME
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 import tensorflow_datasets as tfds
 import tyro
-
-REPO_NAME = "your_hf_username/libero"  # Name of the output dataset, also used for the Hugging Face Hub
+REPO_NAME = "lerobot_libero"  # Name of the output dataset, also used for the Hugging Face Hub
 RAW_DATASET_NAMES = [
-    "libero_10_no_noops",
     "libero_goal_no_noops",
+    "libero_10_no_noops",
     "libero_object_no_noops",
     "libero_spatial_no_noops",
 ]  # For simplicity we will combine multiple Libero datasets into one training dataset
 
 
-def main(data_dir: str, *, push_to_hub: bool = False):
+def main(data_dir: str, *, push_to_hub: bool = True):
     # Clean up any existing dataset in the output directory
     output_path = HF_LEROBOT_HOME / REPO_NAME
     if output_path.exists():
@@ -72,7 +73,6 @@ def main(data_dir: str, *, push_to_hub: bool = False):
         image_writer_threads=10,
         image_writer_processes=5,
     )
-
     # Loop over raw Libero datasets and write episodes to the LeRobot dataset
     # You can modify this for your own data format
     for raw_dataset_name in RAW_DATASET_NAMES:
@@ -88,7 +88,7 @@ def main(data_dir: str, *, push_to_hub: bool = False):
                         "task": step["language_instruction"].decode(),
                     }
                 )
-            dataset.save_episode()
+            # dataset.save_episode()
 
     # Optionally push to the Hugging Face Hub
     if push_to_hub:
@@ -98,7 +98,7 @@ def main(data_dir: str, *, push_to_hub: bool = False):
             push_videos=True,
             license="apache-2.0",
         )
-
+    
 
 if __name__ == "__main__":
     tyro.cli(main)

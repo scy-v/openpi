@@ -3,7 +3,7 @@ import dataclasses
 import logging
 import math
 import pathlib
-
+import time
 import imageio
 from libero.libero import benchmark
 from libero.libero import get_libero_path
@@ -13,7 +13,8 @@ from openpi_client import image_tools
 from openpi_client import websocket_client_policy as _websocket_client_policy
 import tqdm
 import tyro
-
+import matplotlib
+matplotlib.use("Agg")
 LIBERO_DUMMY_ACTION = [0.0] * 6 + [-1.0]
 LIBERO_ENV_RESOLUTION = 256  # resolution used to render training data
 
@@ -35,27 +36,30 @@ class Args:
         "libero_spatial"  # Task suite. Options: libero_spatial, libero_object, libero_goal, libero_10, libero_90
     )
     num_steps_wait: int = 10  # Number of steps to wait for objects to stabilize i n sim
-    num_trials_per_task: int = 50  # Number of rollouts per task
+    num_trials_per_task: int = 2  # Number of rollouts per task
+    # num_trials_per_task: int = 50  # Number of rollouts per task
 
     #################################################################################################################
     # Utils
     #################################################################################################################
-    video_out_path: str = "data/libero/videos"  # Path to save videos
-
+    video_out_path: str = "data/pi05_libero/videos"  # Path to save videos
+    
     seed: int = 7  # Random Seed (for reproducibility)
 
 
 def eval_libero(args: Args) -> None:
     # Set random seed
     np.random.seed(args.seed)
-
+    
     # Initialize LIBERO task suite
     benchmark_dict = benchmark.get_benchmark_dict()
     task_suite = benchmark_dict[args.task_suite_name]()
     num_tasks_in_suite = task_suite.n_tasks
     logging.info(f"Task suite: {args.task_suite_name}")
 
-    pathlib.Path(args.video_out_path).mkdir(parents=True, exist_ok=True)
+    video_out_path = pathlib.Path(args.video_out_path) / args.task_suite_name
+
+    pathlib.Path(video_out_path).mkdir(parents=True, exist_ok=True)
 
     if args.task_suite_name == "libero_spatial":
         max_steps = 220  # longest training demo has 193 steps
@@ -69,7 +73,7 @@ def eval_libero(args: Args) -> None:
         max_steps = 400  # longest training demo has 373 steps
     else:
         raise ValueError(f"Unknown task suite: {args.task_suite_name}")
-
+    
     client = _websocket_client_policy.WebsocketClientPolicy(args.host, args.port)
 
     # Start evaluation
@@ -141,7 +145,9 @@ def eval_libero(args: Args) -> None:
                         }
 
                         # Query model to get action
+                        start = time.time()
                         action_chunk = client.infer(element)["actions"]
+                        print("FPS: ", 1/ (time.time() - start), "chunk_len:", len(action_chunk))
                         assert (
                             len(action_chunk) >= args.replan_steps
                         ), f"We want to replan every {args.replan_steps} steps, but policy only predicts {len(action_chunk)} steps."
@@ -168,7 +174,7 @@ def eval_libero(args: Args) -> None:
             suffix = "success" if done else "failure"
             task_segment = task_description.replace(" ", "_")
             imageio.mimwrite(
-                pathlib.Path(args.video_out_path) / f"rollout_{task_segment}_{suffix}.mp4",
+                pathlib.Path(video_out_path) / f"rollout_{task_segment}_{suffix}.mp4",
                 [np.asarray(x) for x in replay_images],
                 fps=10,
             )

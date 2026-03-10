@@ -7,5 +7,59 @@
         "src"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "cmake.sourceDirectory": "/home/suchenyu/openpi/third_party/aloha",
+    "editor.tokenColorCustomizations": {
+  "textMateRules": [
+    {
+      "scope": "constant.language.heading-tag.supertext",
+      "settings": {
+        "foreground": "#00ff9d",
+        "fontStyle": "bold underline"
+      }
+    },
+    {
+      "scope": "constant.language.tag.supertext",
+      "settings": {
+        "foreground": "#F38D8D"
+      }
+    },
+    {
+      "scope": "constant.language.url.supertext",
+      "settings": {
+        "foreground": "#daa775"
+      }
+    },
+    {
+      "scope": "constant.language.note.supertext",
+      "settings": {
+        "foreground": "#F3ED72"
+      }
+    },
+    {
+      "scope": "constant.language.date.supertext",
+      "settings": {
+        "foreground": "#F3ED72"
+      }
+    },
+    {
+      "scope": "constant.language.quote.supertext",
+      "settings": {
+        "foreground": "#bda385"
+      }
+    },
+    {
+      "scope": "constant.language.divider.supertext",
+      "settings": {
+        "foreground": "#4aff40"
+      }
+    },
+    {
+      "scope": "text.supertext",
+      "settings": {
+        "foreground": "#DBDBDB"
+      }
+    }
+  ]
+}
 }
