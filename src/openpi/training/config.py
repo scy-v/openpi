@@ -527,7 +527,6 @@ class LeRobotUR5eDataConfig(DataConfigFactory):
             model_transforms=model_transforms,
         )
     
-
 @dataclasses.dataclass(frozen=True)
 class LeRobotDualUR5eDataConfig(DataConfigFactory):
     """
@@ -586,7 +585,7 @@ class LeRobotDualUR5eDataConfig(DataConfigFactory):
 
         # extra delta transform.
         if self.extra_delta_transform:
-            delta_action_mask = _transforms.make_bool_mask(6, -1)
+            delta_action_mask = _transforms.make_bool_mask(6, -1, 6, -1)
             data_transforms = data_transforms.push(
                 inputs=[_transforms.DeltaActions(delta_action_mask)],
                 outputs=[_transforms.AbsoluteActions(delta_action_mask)],
@@ -1117,25 +1116,46 @@ _CONFIGS = [
     # 
     TrainConfig(
         name="pi05_finetune_ur5e",
-        model=pi0_config.Pi0Config(pi05=True, action_horizon=10, discrete_state_input=False, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=10, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
         data=LeRobotUR5eDataConfig(
-            # repo_id="scylearning/pick_greencube_into_trashbin_20251102_v02",
-            repo_id="scylearning/pick_greencube_into_trashbin_20251103_v03",
-            # repo_id="scylearning/pick_greencube_into_trashbin_20251104_v04",
-            # repo_id="scylearning/pick_greencube_into_trashbin_20251105_v05",
-            # repo_id="scylearning/pour_water_into_beaker_20251117_v01",
-            # repo_id="scylearning/open_drawer_place_beaker_inside_close_drawer_20251119_v01",
-            # repo_id="scylearning/open_cabinet_place_reagent_bottle_inside_close_cabinet_20251119_v01",
+            repo_id="scylearning/open_cabinet_place_reagent_bottle_inside_close_cabinet_20251119_v01",
             base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
             extra_delta_transform=True,
         ),
-        batch_size=64, # 24 is maximum for single RTX 4090
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=10_000,
-            peak_lr=5e-5,
-            decay_steps=1_000_000,
-            decay_lr=5e-5,
+        batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
+        # log_interval=1,
+        # lr_schedule=_optimizer.CosineDecaySchedule(
+        #     warmup_steps=10_000,
+        #     peak_lr=5e-5,
+        #     decay_steps=1_000_000,
+        #     decay_lr=5e-5,
+        # ),
+        freeze_filter=pi0_config.Pi0Config(
+            paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA finetuning.
+        ema_decay=None,
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        pytorch_weight_path="/path/to/your/pytorch_weight_path",
+        num_train_steps=30_000,
+    ),
+    TrainConfig(
+        name="pi05_finetune_dual_ur",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=10, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
+        data=LeRobotDualUR5eDataConfig(
+            repo_id="scylearning/pour_liquid_from_beaker_into_tank_20260202_v01_187",
+            base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
+            extra_delta_transform=True,
         ),
+        batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
+        # log_interval=1,
+        # lr_schedule=_optimizer.CosineDecaySchedule(
+        #     warmup_steps=10_000,
+        #     peak_lr=5e-5,
+        #     decay_steps=1_000_000,
+        #     decay_lr=5e-5,
+        # ),
         freeze_filter=pi0_config.Pi0Config(
             paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
         ).get_freeze_filter(),
@@ -1145,45 +1165,29 @@ _CONFIGS = [
         # ema_decay=0.999,
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
         pytorch_weight_path="/path/to/your/pytorch_weight_path",
-        num_train_steps=30_000,
+        save_interval=10_000,
+        num_train_steps=50_000,
     ),
     TrainConfig(
-        name="pi05_base",
-        model=pi0_config.Pi0Config(action_horizon=10, pi05=True),
-        data=LeRobotUR5eDataConfig(
-            assets=AssetsConfig(asset_id="ur5e"),
+        name="pi05_full_finetune_dual_ur",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
+        data=LeRobotDualUR5eDataConfig(
+            repo_id="scylearning/pour_liquid_from_beaker_into_tank_20260202_v01_187",
             base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
             extra_delta_transform=True,
         ),
+        batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
+        # log_interval=1,
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        save_interval=10_000,
+        num_train_steps=50_000,
     ),
-TrainConfig(
-    name="pi05_finetune_dual_ur",
-    model=pi0_config.Pi0Config(pi05=True, action_horizon=10, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
-    data=LeRobotDualUR5eDataConfig(
-        repo_id="scylearning/pick_test_tube_brush_20251217_v01",
-        # repo_id="scylearning/pick_test_tube_brush_and_clean_test_tube_20251210_v01",
-        base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
-        extra_delta_transform=True,
-    ),
-    batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
-    # log_interval=1,
-    # lr_schedule=_optimizer.CosineDecaySchedule(
-    #     warmup_steps=10_000,
-    #     peak_lr=5e-5,
-    #     decay_steps=1_000_000,
-    #     decay_lr=5e-5,
-    # ),
-    freeze_filter=pi0_config.Pi0Config(
-        paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
-    ).get_freeze_filter(),
-    # Turn off EMA for LoRA finetuning.
-    ema_decay=None,
-    optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
-    # ema_decay=0.999,
-    weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
-    pytorch_weight_path="/path/to/your/pytorch_weight_path",
-    num_train_steps=30_000,
-)
 ]
 
 if len({config.name for config in _CONFIGS}) != len(_CONFIGS):
