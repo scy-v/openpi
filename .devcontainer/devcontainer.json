@@ -1,0 +1,6 @@
+{
+  "name": "libero_devcontrainer",
+  "dockerComposeFile": "../examples/libero/compose.yml",
+  "service": "runtime",
+  "workspaceFolder": "/app"
+}

@@ -7,7 +7,8 @@ from typing import Literal, Protocol, SupportsIndex, TypeVar
 
 import jax
 import jax.numpy as jnp
-import lerobot.common.datasets.lerobot_dataset as lerobot_dataset
+import lerobot.datasets.lerobot_dataset as lerobot_dataset
+# import lerobot.common.datasets.lerobot_dataset as lerobot_dataset
 import numpy as np
 import torch
 
@@ -144,6 +145,24 @@ def create_torch_dataset(
             key: [t / dataset_meta.fps for t in range(action_horizon)] for key in data_config.action_sequence_keys
         },
     )
+    def reorder_state(example, indices):
+        state = example['observation.state']
+        if max(indices) > len(state) or min(indices) < 1:
+            raise IndexError(f"indices {indices} out of range for observation.state of length {len(state)}")
+        example['observation.state'] = [state[i-1] for i in indices]
+        return example
+    
+    obs_indices = os.getenv("OBS_INDICES")
+    
+    if obs_indices:
+        indices = list(map(int, obs_indices.split(",")))
+    else:
+        raise ValueError("Environment variable OBS_INDICES not set for reordering observation.state")
+
+    print(f"Reordering state with indices: {indices}")
+    print(f"Reordering state with names: {[dataset_meta.names['observation.state'][i-1] for i in indices]}")
+    dataset.hf_dataset = dataset.hf_dataset.map(lambda ex: reorder_state(ex, indices=indices))
+    print("Finished reordering state.")
 
     if data_config.prompt_from_task:
         dataset = TransformedDataset(dataset, [_transforms.PromptFromLeRobotTask(dataset_meta.tasks)])
@@ -299,7 +318,7 @@ def create_torch_data_loader(
             execute in the main process.
         seed: The seed to use for shuffling the data.
     """
-    dataset = create_torch_dataset(data_config, action_horizon, model_config)
+    dataset = create_torch_dataset(data_config, action_horizon, model_config) 
     dataset = transform_dataset(dataset, data_config, skip_norm_stats=skip_norm_stats)
 
     # Use TorchDataLoader for both frameworks

@@ -1,0 +1,24 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            // "args": ["pi05_finetune_dual_ur", "--exp-name", "test_4090", "--overwrite"],
+            "args": ["--config-name", "pi05_finetune_dual_ur"],
+            "env":{
+                "OBS_INDICES": "1,2,3,4,5,6,7,8,9,10,11,12,13,14",
+                // "OBS_INDICES": "55,56,57,58,59,60,7,61,62,63,64,65,66,14",
+                // "ACTION_GRIPPER_INDICES": "7, 14",
+                "CUDA_VISIBLE_DEVICES": "4,5,6,7"
+            }
+        }
+    ]
+}
