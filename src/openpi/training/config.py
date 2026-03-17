@@ -1118,7 +1118,7 @@ _CONFIGS = [
         name="pi05_finetune_ur5e",
         model=pi0_config.Pi0Config(pi05=True, action_horizon=50, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
         data=LeRobotUR5eDataConfig(
-            repo_id="scylearning/move_reagent_bottle_20260316_v01",
+            repo_id="scylearning/move_reagent_bottle_20260317_v01",
             base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
             extra_delta_transform=True,
         ),
@@ -1136,7 +1136,7 @@ _CONFIGS = [
         ).get_freeze_filter(),
         # Turn off EMA for LoRA finetuning.
         ema_decay=None,
-        save_interval= 10000,
+        save_interval=10000,
         optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
         # ema_decay=0.999,
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
