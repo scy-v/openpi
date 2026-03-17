@@ -1188,6 +1188,26 @@ _CONFIGS = [
         save_interval=10_000,
         num_train_steps=50_000,
     ),
+    TrainConfig(
+        name="pi05_full_finetune_ur5e",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
+        data=LeRobotUR5eDataConfig(
+            repo_id="scylearning/move_reagent_bottle_20260316_v01",
+            base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
+            extra_delta_transform=True,
+        ),
+        batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
+        # log_interval=1,
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        save_interval=10_000,
+        num_train_steps=30_000,
+    ),
 ]
 
 if len({config.name for config in _CONFIGS}) != len(_CONFIGS):
