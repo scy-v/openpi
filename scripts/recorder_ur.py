@@ -53,16 +53,15 @@ class Recorder:
         while True:
             try:
                 obs = self.queue_vis.get()
-                l_wrist, ext, r_wrist = map(self.to_bgr, [obs["observation/left_wrist_image"], obs["observation/exterior_image"], obs["observation/right_wrist_image"]])
+                l_wrist, ext = map(self.to_bgr, [obs["observation/wrist_image"], obs["observation/image"]])
                 # save frames in memory (convert to uint8 to save space)
                 self.frames_ext.append(ext.astype(np.uint8))
                 self.frames_left_wrist.append(l_wrist.astype(np.uint8))
-                self.frames_right_wrist.append(r_wrist.astype(np.uint8))
 
                 if self.visualize:
                     # concatenate and display
-                    combined = np.hstack((l_wrist, ext, r_wrist))
-                    cv2.imshow("Left Wrist | Exterior | Right Wrist", combined)
+                    combined = np.hstack((l_wrist, ext))
+                    cv2.imshow("Left Wrist | Exterior", combined)
                     if cv2.waitKey(1) & 0xFF == ord("q"):
                         break
 
