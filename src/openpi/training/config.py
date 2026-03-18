@@ -1354,6 +1354,16 @@ _CONFIGS = [
         pytorch_weight_path="/path/to/your/pytorch_weight_path",
         num_train_steps=50_000,
     ),
+        TrainConfig(
+        name="server_infer",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
+        data=LeRobotUR5eDataConfig(
+            repo_id="ur5e",
+            # repo_id="scylearning/move_reagent_bottle_20260317_v01",
+            base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
+            extra_delta_transform=True,
+        ),
+    ),
 ]
 
 if len({config.name for config in _CONFIGS}) != len(_CONFIGS):
