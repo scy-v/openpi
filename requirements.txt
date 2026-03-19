@@ -1,0 +1,4 @@
+pin==3.8.0
+pydhgripper
+pyrealsense2
+ur-rtde

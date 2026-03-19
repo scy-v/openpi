@@ -19,7 +19,7 @@ services:
     environment:
       - CLIENT_ARGS
       - DISPLAY=$DISPLAY
-      - MUJOCO_GL=${MUJOCO_GL:-egl}
+      - MUJOCO_GL=${MUJOCO_GL:-glx}
     deploy:
       resources:
         reservations:
@@ -43,7 +43,6 @@ services:
       - SERVER_ARGS
       - OPENPI_DATA_HOME=/openpi_assets
       - IS_DOCKER=true
-
     # Comment out this block if not running on a machine with GPUs.
     deploy:
       resources:
