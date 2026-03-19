@@ -13,9 +13,9 @@
             "justMyCode": false,
             "args": ["--config-name", "pi05_finetune_ur5e"],
             "env":{
-                "OBS_INDICES": "28,29,30,31,32,33,7",
+                "OBS_INDICES": "28,29,30,31,32,33,7,34,35,36,37,38,39,43,44,45,46,47,48",
                 "ACTION_INDICES": "1,2,3,4,5,6,7",
-                "CUDA_VISIBLE_DEVICES": "4,5,6,7",
+                // "CUDA_VISIBLE_DEVICES": "4,5,6,7",
                 "ACTION_SLICE": "6, -1",
                 "URDF_PATH": "urdf/ur5e/ur5e.urdf"
             }
