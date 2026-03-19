@@ -116,7 +116,6 @@ def main(args: Args) -> None:
     )
     server.serve_forever()
 
-
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, force=True)
     main(tyro.cli(Args))

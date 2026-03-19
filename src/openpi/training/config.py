@@ -21,6 +21,11 @@ import openpi.policies.droid_policy as droid_policy
 import openpi.policies.libero_policy as libero_policy
 import openpi.policies.ur5e_policy as ur5e_policy
 import openpi.policies.dual_ur_policy as dual_ur_policy
+<<<<<<< HEAD
+=======
+import openpi.policies.ur5e_policy as ur5e_policy
+import openpi.policies.dual_ur_policy as dual_ur_policy
+>>>>>>> origin/main
 import openpi.shared.download as _download
 import openpi.shared.normalize as _normalize
 import openpi.training.droid_rlds_dataset as droid_rlds_dataset
@@ -32,7 +37,6 @@ import openpi.transforms as _transforms
 ModelType: TypeAlias = _model.ModelType
 # Work around a tyro issue with using nnx.filterlib.Filter directly.
 Filter: TypeAlias = nnx.filterlib.Filter
-
 
 @dataclasses.dataclass(frozen=True)
 class AssetsConfig:
@@ -604,6 +608,160 @@ class LeRobotDualUR5eDataConfig(DataConfigFactory):
             model_transforms=model_transforms,
         )
     
+<<<<<<< HEAD
+=======
+@dataclasses.dataclass(frozen=True)
+class LeRobotUR5eDataConfig(DataConfigFactory):
+    """
+    This config is used to configure transforms that are applied at various parts of the data pipeline.
+    For your own dataset, you can copy this class and modify the transforms to match your dataset based on the
+    comments below.
+    """
+
+    extra_delta_transform: bool = True
+
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        # The repack transform is *only* applied to the data coming from the dataset,
+        # and *not* during inference. We can use it to make inputs from the dataset look
+        # as close as possible to those coming from the inference environment (e.g. match the keys).
+        # Below, we match the keys in the dataset (which we defined in the data conversion script) to
+        # the keys we use in our inference pipeline (defined in the inference script for UR5e).
+        # For your own dataset, first figure out what keys your environment passes to the policy server
+        # and then modify the mappings below so your dataset's keys get matched to those target keys.
+        # The repack transform simply remaps key names here.
+        repack_transform = _transforms.Group(
+            inputs=[
+                _transforms.RepackTransform(
+                    {
+                        "observation/image": "observation.images.exterior_image",
+                        "observation/wrist_image": "observation.images.wrist_image",
+                        "observation/state": "observation.state",
+                        "actions": "action",
+                        "prompt": "task",
+                    }
+                )
+            ]
+        )
+    
+        # The data transforms are applied to the data coming from the dataset *and* during inference.
+        # Below, we define the transforms for data going into the model (``inputs``) and the transforms
+        # for data coming out of the model (``outputs``) (the latter is only used during inference).
+        # We defined these transforms in `UR5e_policy.py`. You can check the detailed comments there for
+        # how to modify the transforms to match your dataset. Once you created your own transforms, you can
+        # replace the transforms below with your own.
+        data_transforms = _transforms.Group(
+            inputs=[ur5e_policy.UR5eInputs(model_type=model_config.model_type)],
+            outputs=[ur5e_policy.UR5eOutputs()],
+        )
+
+        # One additional data transform: pi0 models are trained on delta actions (relative to the first
+        # state in each action chunk). IF your data has ``absolute`` actions (e.g. target joint angles)
+        # you can uncomment the following line to convert the actions to delta actions. The only exception
+        # is for the gripper actions which are always absolute.
+        # In the example below, we would apply the delta conversion to the first 6 actions (joints) and
+        # leave the 7th action (gripper) unchanged, i.e. absolute.
+        # In UR5e, the raw actions in the dataset are already delta actions, so we *do not* need to
+        # apply a separate delta conversion (that's why it's commented out). Choose whether to apply this
+        # transform based on whether your dataset uses ``absolute`` or ``delta`` actions out of the box.
+
+        # extra delta transform.
+        if self.extra_delta_transform:
+            delta_action_mask = _transforms.make_bool_mask(6, -1)
+            data_transforms = data_transforms.push(
+                inputs=[_transforms.DeltaActions(delta_action_mask)],
+                outputs=[_transforms.AbsoluteActions(delta_action_mask)],
+            )
+
+        # Model transforms include things like tokenizing the prompt and action targets
+        # You do not need to change anything here for your own dataset.
+        model_transforms = ModelTransformFactory()(model_config)
+
+        # We return all data transforms for training and inference. No need to change anything here.
+        return dataclasses.replace(
+            self.create_base_config(assets_dirs, model_config),
+            repack_transforms=repack_transform,
+            data_transforms=data_transforms,
+            model_transforms=model_transforms,
+        )
+    
+@dataclasses.dataclass(frozen=True)
+class LeRobotDualUR5eDataConfig(DataConfigFactory):
+    """
+    This config is used to configure transforms that are applied at various parts of the data pipeline.
+    For your own dataset, you can copy this class and modify the transforms to match your dataset based on the
+    comments below.
+    """
+
+    extra_delta_transform: bool = True
+
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        # The repack transform is *only* applied to the data coming from the dataset,
+        # and *not* during inference. We can use it to make inputs from the dataset look
+        # as close as possible to those coming from the inference environment (e.g. match the keys).
+        # Below, we match the keys in the dataset (which we defined in the data conversion script) to
+        # the keys we use in our inference pipeline (defined in the inference script for UR5e).
+        # For your own dataset, first figure out what keys your environment passes to the policy server
+        # and then modify the mappings below so your dataset's keys get matched to those target keys.
+        # The repack transform simply remaps key names here.
+        repack_transform = _transforms.Group(
+            inputs=[
+                _transforms.RepackTransform(
+                    {
+                        "observation/exterior_image": "observation.images.exterior_image",
+                        "observation/left_wrist_image": "observation.images.left_wrist_image",
+                        "observation/right_wrist_image": "observation.images.right_wrist_image",
+                        "observation/state": "observation.state",
+                        "actions": "action",
+                        "prompt": "task",
+                    }
+                )
+            ]
+        )
+    
+        # The data transforms are applied to the data coming from the dataset *and* during inference.
+        # Below, we define the transforms for data going into the model (``inputs``) and the transforms
+        # for data coming out of the model (``outputs``) (the latter is only used during inference).
+        # We defined these transforms in `UR5e_policy.py`. You can check the detailed comments there for
+        # how to modify the transforms to match your dataset. Once you created your own transforms, you can
+        # replace the transforms below with your own.
+        data_transforms = _transforms.Group(
+            inputs=[dual_ur_policy.DualURInputs(model_type=model_config.model_type)],
+            outputs=[dual_ur_policy.DualUROutputs()],
+        )
+
+        # One additional data transform: pi0 models are trained on delta actions (relative to the first
+        # state in each action chunk). IF your data has ``absolute`` actions (e.g. target joint angles)
+        # you can uncomment the following line to convert the actions to delta actions. The only exception
+        # is for the gripper actions which are always absolute.
+        # In the example below, we would apply the delta conversion to the first 6 actions (joints) and
+        # leave the 7th action (gripper) unchanged, i.e. absolute.
+        # In UR5e, the raw actions in the dataset are already delta actions, so we *do not* need to
+        # apply a separate delta conversion (that's why it's commented out). Choose whether to apply this
+        # transform based on whether your dataset uses ``absolute`` or ``delta`` actions out of the box.
+
+        # extra delta transform.
+        if self.extra_delta_transform:
+            delta_action_mask = _transforms.make_bool_mask(6, -1, 6, -1)
+            data_transforms = data_transforms.push(
+                inputs=[_transforms.DeltaActions(delta_action_mask)],
+                outputs=[_transforms.AbsoluteActions(delta_action_mask)],
+            )
+
+        # Model transforms include things like tokenizing the prompt and action targets
+        # You do not need to change anything here for your own dataset.
+        model_transforms = ModelTransformFactory()(model_config)
+
+        # We return all data transforms for training and inference. No need to change anything here.
+        return dataclasses.replace(
+            self.create_base_config(assets_dirs, model_config),
+            repack_transforms=repack_transform,
+            data_transforms=data_transforms,
+            model_transforms=model_transforms,
+        )
+    
+>>>>>>> origin/main
 @dataclasses.dataclass(frozen=True)
 class TrainConfig:
     # Name of the config. Must be unique. Will be used to reference this config.
@@ -1117,14 +1275,53 @@ _CONFIGS = [
     # 
     TrainConfig(
         name="pi05_finetune_ur5e",
+<<<<<<< HEAD
         model=pi0_config.Pi0Config(pi05=True, action_horizon=10, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
         data=LeRobotUR5eDataConfig(
             repo_id="scylearning/open_cabinet_place_reagent_bottle_inside_close_cabinet_20251119_v01",
+=======
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=50, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
+        data=LeRobotUR5eDataConfig(
+            repo_id="scylearning/move_reagent_bottle_20260317_v01",
+            base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
+            extra_delta_transform=True,
+        ),
+        #batch_size=64
+        batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
+        # log_interval=1,
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        freeze_filter=pi0_config.Pi0Config(
+            paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
+        ).get_freeze_filter(),
+        # Turn off EMA for LoRA finetuning.
+        ema_decay=None,
+        save_interval=10000,
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        # ema_decay=0.999,
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        pytorch_weight_path="/path/to/your/pytorch_weight_path",
+        num_train_steps=30_000,
+    ),
+    TrainConfig(
+        name="pi05_finetune_dual_ur",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=50, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
+        data=LeRobotDualUR5eDataConfig(
+            repo_id="scylearning/pick_test_tube_brush_and_clean_test_tube_20251210_v01_100",
+>>>>>>> origin/main
             base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
             extra_delta_transform=True,
         ),
         batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
+<<<<<<< HEAD
         # log_interval=1,
+=======
+        # log_interval=10,
+>>>>>>> origin/main
         # lr_schedule=_optimizer.CosineDecaySchedule(
         #     warmup_steps=10_000,
         #     peak_lr=5e-5,
@@ -1134,6 +1331,7 @@ _CONFIGS = [
         freeze_filter=pi0_config.Pi0Config(
             paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
         ).get_freeze_filter(),
+<<<<<<< HEAD
         # Turn off EMA for LoRA finetuning.
         ema_decay=None,
         optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
@@ -1144,13 +1342,34 @@ _CONFIGS = [
     TrainConfig(
         name="pi05_finetune_dual_ur",
         model=pi0_config.Pi0Config(pi05=True, action_horizon=10, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
+=======
+        # How often (in steps) to save checkpoints.
+        save_interval= 5000,
+        # If set, any existing checkpoints matching step % keep_period == 0 will not be deleted.
+        keep_period= 10000,
+        # Turn off EMA for LoRA finetuning.
+        ema_decay=None,
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        # ema_decay=0.999,
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        pytorch_weight_path="/path/to/your/pytorch_weight_path",
+        num_train_steps=50_000,
+    ),
+    TrainConfig(
+        name="pi0_finetune_dual_ur",
+        model=pi0_config.Pi0Config(pi05=False, action_horizon=10, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
+>>>>>>> origin/main
         data=LeRobotDualUR5eDataConfig(
             repo_id="scylearning/pour_liquid_from_beaker_into_tank_20260202_v01_187",
             base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
             extra_delta_transform=True,
         ),
         batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
+<<<<<<< HEAD
         # log_interval=1,
+=======
+        # log_interval=10,
+>>>>>>> origin/main
         # lr_schedule=_optimizer.CosineDecaySchedule(
         #     warmup_steps=10_000,
         #     peak_lr=5e-5,
@@ -1164,6 +1383,7 @@ _CONFIGS = [
         ema_decay=None,
         optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
         # ema_decay=0.999,
+<<<<<<< HEAD
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
         pytorch_weight_path="/path/to/your/pytorch_weight_path",
         save_interval=10_000,
@@ -1208,6 +1428,33 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
         save_interval=10_000,
         num_train_steps=30_000,
+=======
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        pytorch_weight_path="/path/to/your/pytorch_weight_path",
+        num_train_steps=50_000,
+    ),
+    TrainConfig(
+        name="server_infer_full_finetune",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
+        data=LeRobotUR5eDataConfig(
+            # repo_id="ur5e",
+            repo_id="scylearning/move_reagent_bottle_20260317_v01_joint",
+            base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
+            extra_delta_transform=True,
+        ),
+    ),
+    TrainConfig(
+        name="server_infer_lora_finetune",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=50, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
+        data=LeRobotUR5eDataConfig(
+            repo_id="scylearning/move_reagent_bottle_20260317_v01_joint",
+            base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
+            extra_delta_transform=True,
+        ),
+        freeze_filter=pi0_config.Pi0Config(
+            paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
+        ).get_freeze_filter(),
+>>>>>>> origin/main
     ),
 ]
 

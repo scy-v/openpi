@@ -46,7 +46,6 @@ def init_logging():
     logger.setLevel(logging.INFO)
     logger.handlers[0].setFormatter(formatter)
 
-
 def init_wandb(config: _config.TrainConfig, *, resuming: bool, log_code: bool = False, enabled: bool = True):
     if not enabled:
         wandb.init(mode="disabled")

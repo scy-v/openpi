@@ -11,11 +11,22 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
+<<<<<<< HEAD
             // "args": ["pi05_finetune_ur5e", "--exp-name", "test_on_a800", "--overwrite"],
             // "args": ["--config-name", "pi05_finetune_ur5e"],
             // "env":{
             //     "OBS_INDICES": "1,2,3,4,5,6,7",
             // }
+=======
+            "args": ["--config-name", "pi05_finetune_ur5e"],
+            "env":{
+                "OBS_INDICES": "28,29,30,31,32,33,7",
+                "ACTION_INDICES": "1,2,3,4,5,6,7",
+                "CUDA_VISIBLE_DEVICES": "4,5,6,7",
+                "ACTION_SLICE": "6, -1",
+                "URDF_PATH": "urdf/ur5e/ur5e.urdf"
+            }
+>>>>>>> origin/main
         }
     ]
 }
