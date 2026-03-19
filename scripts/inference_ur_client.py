@@ -12,14 +12,11 @@ from utils import FpsCounter
 from openpi_client import image_tools
 from rtde_control import RTDEControlInterface
 from rtde_receive import RTDEReceiveInterface
-from openpi.policies import ur5e_policy
 from recorder_ur import Recorder 
 from openpi_client import websocket_client_policy
 from pathlib import Path
 import pinocchio as pin
 from scipy.spatial.transform import Rotation as R
-from openpi.training import config as _config
-from openpi.policies import policy_config as _policy_config
 from lerobot.cameras.configs import ColorMode, Cv2Rotation
 from lerobot.cameras.realsense.camera_realsense import RealSenseCameraConfig
 from lerobot.cameras import make_cameras_from_configs
@@ -70,6 +67,7 @@ class Inference:
         self.pos_delta = force_mode["pos_delta"]
         self.vel_delta = force_mode["vel_delta"]
         self.select_vector = force_mode["select_vector"]
+        self.rtde_freq = force_mode["rtde_freq"]
         self.force_limit = force_mode["force_limit"]
         self.gain_scale = force_mode["gain_scale"]
         self.urdf_path = Path(__file__).parents[1] / robot["urdf_path"]
@@ -124,6 +122,7 @@ class Inference:
         self._gripper_position = 1
         self.task_frame= [0,0,0,0,0,0]
         self._last_servoj_ts = None
+        
     def create_websocket_client(self):
         logging.info("\n===== [WEBSOCKET] Creating Websocket Client =====")
         self.client = websocket_client_policy.WebsocketClientPolicy(host=self.server_ip, port=self.server_port)
@@ -291,16 +290,16 @@ class Inference:
     def _calculate_force(self, target_pos, curr_pos, curr_vel):
         """ Calculate the force/torque based on the position and velocity errors using a PD controller. """
         # position
-        diff_p = np.clip(np.array(target_pos[:3]) - np.array(curr_pos[:3]), -self.config.pos_delta, self.config.pos_delta)
-        diff_d = np.clip(-np.array(curr_vel[:3]), -self.config.vel_delta, self.config.vel_delta)
-        force_pos = self.config.kp * diff_p + self.config.kd * diff_d
+        diff_p = np.clip(np.array(target_pos[:3]) - np.array(curr_pos[:3]), -self.pos_delta, self.pos_delta)
+        diff_d = np.clip(-np.array(curr_vel[:3]), -self.vel_delta, self.vel_delta)
+        force_pos = self.kp * diff_p + self.kd * diff_d
         
         # orientation (Pinocchio version)
         R_target = pin.exp3(np.array(target_pos[3:]))
         R_curr   = pin.exp3(np.array(curr_pos[3:]))
         R_err = R_target @ R_curr.T
         rot_err = pin.log3(R_err)
-        torque = (self.config.kp_rot * rot_err - self.config.kd_rot * np.array(curr_vel[3:])) / self.config.rtde_freq
+        torque = (self.kp_rot * rot_err - self.kd_rot * np.array(curr_vel[3:])) / self.rtde_freq
 
         return np.concatenate((force_pos, torque))  
     
@@ -420,12 +419,16 @@ class Inference:
 
     # --------------------------- CARTESIAN TO FORCE MODE EXECUTION --------------------------- #
     def execute_actions_cartesian_to_force(self, actions: np.ndarray):
-        ft_target = self._calculate_force(actions, self.obs["ee_pose"], self.obs["tcp_speed"])
         for i, action in enumerate(actions):
+            curr_tcp_speed = np.asarray(self.rtde_r.getActualTCPSpeed())
+            curr_tcp_pose = np.asarray(self.rtde_r.getActualTCPPose())
+            curr_tcp_offset = self.rtde_c.getTCPOffset()
+            curr_ee_pose = self.tcp_to_ee_pose(curr_tcp_pose, curr_tcp_offset)
+            ft_target = self._calculate_force(action[:6], curr_ee_pose, curr_tcp_speed)
             start_time = time.perf_counter()
             # Move robot
             t_start = self.rtde_c.initPeriod()
-            self._arm["rtde_c"].forceMode(self.task_frame,self.select_vector,ft_target,self.type,self.force_limit)
+            self.rtde_c.forceMode(self.task_frame,self.select_vector,ft_target,self.type,self.force_limit)
             self.rtde_c.waitPeriod(t_start)
             self._gripper_position = action[6]
 
@@ -437,14 +440,18 @@ class Inference:
 
     # --------------------------- JOINT TO FORCE MODE EXECUTION --------------------------- #
     def execute_actions_joint_to_force(self, actions: np.ndarray):
-        target_pose = self._fk(actions)
-        ft_target = self._calculate_force(target_pose, self.obs["ee_pose"], self.obs["tcp_speed"])
         for i, action in enumerate(actions):
+            target_pose = self._fk(action[:6])
+            curr_tcp_speed = np.asarray(self.rtde_r.getActualTCPSpeed())
+            curr_tcp_pose = np.asarray(self.rtde_r.getActualTCPPose())
+            curr_tcp_offset = self.rtde_c.getTCPOffset()
+            curr_ee_pose = self.tcp_to_ee_pose(curr_tcp_pose, curr_tcp_offset)
+            ft_target = self._calculate_force(target_pose, curr_ee_pose, curr_tcp_speed)
             start_time = time.perf_counter()
             # Move robot
-            t_start = self.rtde_c.initPeriod()
-            self._arm["rtde_c"].forceMode(self.task_frame,self.select_vector,ft_target,self.type,self.force_limit)
-            self.rtde_c.waitPeriod(t_start)
+            # t_start = self.rtde_c.initPeriod()
+            self.rtde_c.forceMode(self.task_frame,self.select_vector,ft_target,self.type,self.force_limit)
+            # self.rtde_c.waitPeriod(t_start)
             self._gripper_position = action[6]
 
             elapsed = time.perf_counter() - start_time
@@ -476,7 +483,9 @@ class Inference:
             while True:
                 start_time = time.perf_counter()
                 obs = self.get_obs_state()
+                start = time.time()
                 result = self.client.infer(obs)
+                print(time.time()-start)
                 self.execute_actions(result["actions"])
                 self.recorder.submit_actions(result["actions"][:self.action_horizon], infer_time, obs["prompt"])
                 self.recorder.submit_obs(obs)
@@ -490,13 +499,14 @@ class Inference:
             logging.error(f"[ERROR] Inference loop encountered an error: {e}")
 
         try:
+            self.rtde_c.forceMode(self.task_frame,[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],self.type,self.force_limit)
             ans = input("Save recorded videos before exiting? [Y/n]: ").strip().lower()
             if ans in ("", "y", "yes"):
                 logging.info("[INFO] Saving recorded videos before exiting...")
                 self.recorder.save_video()
         except Exception as e:
             logging.error(f"[ERROR] Failed to save videos: {e}")
-
+        self.rtde_c.forceMode(self.task_frame,[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],self.type,self.force_limit)
 # --------------------------- MAIN --------------------------- #
 def main():
     config_path = Path(__file__).parent / "config" / "cfg_ur_client.yaml"

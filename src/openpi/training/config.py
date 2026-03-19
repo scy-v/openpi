@@ -1354,15 +1354,27 @@ _CONFIGS = [
         pytorch_weight_path="/path/to/your/pytorch_weight_path",
         num_train_steps=50_000,
     ),
-        TrainConfig(
-        name="server_infer",
+    TrainConfig(
+        name="server_infer_full_finetune",
         model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
         data=LeRobotUR5eDataConfig(
-            repo_id="ur5e",
-            # repo_id="scylearning/move_reagent_bottle_20260317_v01",
+            # repo_id="ur5e",
+            repo_id="scylearning/move_reagent_bottle_20260317_v01_joint",
             base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
             extra_delta_transform=True,
         ),
+    ),
+    TrainConfig(
+        name="server_infer_lora_finetune",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=50, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
+        data=LeRobotUR5eDataConfig(
+            repo_id="scylearning/move_reagent_bottle_20260317_v01_joint",
+            base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
+            extra_delta_transform=True,
+        ),
+        freeze_filter=pi0_config.Pi0Config(
+            paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
+        ).get_freeze_filter(),
     ),
 ]
 

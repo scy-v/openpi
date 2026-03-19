@@ -29,7 +29,6 @@ class Recorder:
         # store frames for video
         self.frames_ext = []    # exterior camera frames
         self.frames_left_wrist = []  # left wrist camera frames
-        self.frames_right_wrist = []  # right wrist camera frames
 
         # start threads
         threading.Thread(target=self._logger_thread, daemon=True).start()
@@ -98,7 +97,7 @@ class Recorder:
     # ====================== Save Video ====================== #
     def save_video(self):
         """Save stored frames as two separate MP4 videos using H.264."""
-        if not self.frames_ext or not self.frames_left_wrist or not self.frames_right_wrist:
+        if not self.frames_ext or not self.frames_left_wrist:
             print("No frames to save.")
             return
 
@@ -112,7 +111,7 @@ class Recorder:
     def save_videos_multi_codec(self):
         """Save frames in memory as videos with H.264 / H.265 / AV1."""
 
-        if not self.frames_ext or not self.frames_left_wrist or not self.frames_right_wrist:
+        if not self.frames_ext or not self.frames_left_wrist:
             print("No frames to save.")
             return
 

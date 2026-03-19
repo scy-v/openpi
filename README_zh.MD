@@ -12,9 +12,9 @@ git clone https://github.com/scy-v/openpi.git
 cd openpi
 GIT_LFS_SKIP_SMUDGE=1 uv sync
 source .venv/bin/activate
-uv pip install -r requirements.txt
 cd packages/openpi-client
 uv pip install -e .
+uv pip install -r requirements.txt
 ```
 
 
