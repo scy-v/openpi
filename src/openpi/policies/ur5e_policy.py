@@ -79,11 +79,6 @@ class UR5eInputs(transforms.DataTransformFn):
         # stored in "prompt"; the output dict always needs to have the key "prompt").
         if "prompt" in data:
             inputs["prompt"] = data["prompt"]
-<<<<<<< HEAD
-
-=======
-            
->>>>>>> origin/main
         return inputs
 
 

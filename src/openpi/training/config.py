@@ -1122,15 +1122,7 @@ _CONFIGS = [
             base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
             extra_delta_transform=True,
         ),
-        #batch_size=64
         batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
-        # log_interval=1,
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=10_000,
-            peak_lr=5e-5,
-            decay_steps=1_000_000,
-            decay_lr=5e-5,
-        ),
         freeze_filter=pi0_config.Pi0Config(
             paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
         ).get_freeze_filter(),
@@ -1165,27 +1157,6 @@ _CONFIGS = [
         # ema_decay=0.999,
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
         pytorch_weight_path="/path/to/your/pytorch_weight_path",
-        num_train_steps=50_000,
-    ),
-    TrainConfig(
-        name="pi0_finetune_dual_ur",
-        model=pi0_config.Pi0Config(pi05=False, action_horizon=10, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
-        data=LeRobotDualUR5eDataConfig(
-            repo_id="scylearning/pour_liquid_from_beaker_into_tank_20260202_v01_187",
-            base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
-            extra_delta_transform=True,
-        ),
-        batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
-        freeze_filter=pi0_config.Pi0Config(
-            paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"
-        ).get_freeze_filter(),
-        # Turn off EMA for LoRA finetuning.
-        ema_decay=None,
-        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
-        # ema_decay=0.999,
-        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
-        pytorch_weight_path="/path/to/your/pytorch_weight_path",
-        save_interval=10_000,
         num_train_steps=50_000,
     ),
     TrainConfig(
@@ -1227,9 +1198,6 @@ _CONFIGS = [
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
         save_interval=10_000,
         num_train_steps=30_000,
-        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
-        pytorch_weight_path="/path/to/your/pytorch_weight_path",
-        num_train_steps=50_000,
     ),
     TrainConfig(
         name="server_infer_full_finetune",
