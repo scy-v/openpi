@@ -1,4 +1,0 @@
-from rtde_receive import RTDEReceiveInterface
-rtde_r = RTDEReceiveInterface("192.168.131.11")
-print(rtde_r.getActualQ())
-# [3.098723888397217, -1.8898230991759242, -0.6481670141220093, -2.2008968792357386, 1.5027573108673096, -0.07784110704530889]

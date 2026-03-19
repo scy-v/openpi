@@ -1,0 +1,49 @@
+task:
+  # description: "Pick up the tape measure and put it into the trash bin."
+  # description: "Pick up the ball and put it into the trash bin."
+  description: "Move the reagent bottle to the diagonal position of the bottle rack."
+  # description: "Pick up the bottle and put it into the trash bin."
+  # description: "Pick up the red cylinder and put it into the trash bin."
+  # description: "Pick up the yellow cube and put it into the trash bin."
+  # description: "Pick up the white handle and put it into the trash bin."
+  # description: "Pick up the blue strip and put it into the trash bin."
+  # description: "Pick up the object on the table and put it into the trash bin."
+  # description: "Pick up the pink cube and put it into the trash bin."
+  # description: "Pick up the transparent beaker and put it into the trash bin."
+  # description: "Pour the water from one beaker into another."
+  # description: "Open the drawer, place the beaker inside, and close the drawer."
+  # description: "Open the cabinet, place the reagent bottle inside, and close the cabinet."
+
+video:
+  fps: 7  # camera fps for recording
+  visualize: False # whether to visualize the images during execution
+
+robot:
+  ip: "192.168.131.11" # robot_ip
+  gripper_port: "/dev/ur5e_left_gripper" # gripper_port
+  gripper_reverse: False  # If gripper moves opposite, flip this value
+  initial_pose: [-0.7853978315936487, -1.3962382835200806, -2.0943870544433594, -1.2217362386039277, 1.5707991123199463, 1.1234563316975255e-05]
+  action_fps: 450
+  action_horizon: 14
+  debug: False
+  control_mode: joint_to_force # joint_position or joint_to_force or cartesian_to_force
+  urdf_path: "urdf/ur5e/ur5e.urdf"
+  force_mode:
+    kp: 2000 
+    kd: 200 
+    kp_rot: 4000
+    kd_rot: 800
+    rtde_freq: 125
+    select_vector: [1, 1, 1, 1, 1, 1]
+    force_limit: [2,2,2,2,2,2]
+    pos_delta: 0.2
+    vel_delta: 0.2   
+    gain_scale: 1.2
+server:
+  ip: "211.86.155.209"
+  port: 8000
+
+cameras:
+    wrist_cam_serial: "151222071369" # wrist camera serial number
+    exterior_cam_serial: "151322070364" # exterior camera serial number
+    fps: 15  # camera fps 

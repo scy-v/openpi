@@ -9,8 +9,6 @@ import jax
 import jax.numpy as jnp
 import lerobot.datasets.lerobot_dataset as lerobot_dataset
 # import lerobot.common.datasets.lerobot_dataset as lerobot_dataset
-import lerobot.datasets.lerobot_dataset as lerobot_dataset
-# import lerobot.common.datasets.lerobot_dataset as lerobot_dataset
 import numpy as np
 import torch
 
@@ -147,12 +145,6 @@ def create_torch_dataset(
             key: [t / dataset_meta.fps for t in range(action_horizon)] for key in data_config.action_sequence_keys
         },
     )
-    def reorder_state(example, indices):
-        state = example['observation.state']
-        if max(indices) > len(state) or min(indices) < 1:
-            raise IndexError(f"indices {indices} out of range for observation.state of length {len(state)}")
-        example['observation.state'] = [state[i-1] for i in indices]
-        return example
     
     from pathlib import Path
     import pinocchio as pin
