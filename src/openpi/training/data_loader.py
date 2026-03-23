@@ -152,7 +152,7 @@ def create_torch_dataset(
     action_slice = os.getenv("ACTION_SLICE")
     action_indices = os.getenv("ACTION_INDICES")
     urdf_path = os.getenv("URDF_PATH")
-    
+
     # ---------------------------
     # State reorder
     # ---------------------------
@@ -207,6 +207,26 @@ def create_torch_dataset(
         tool_id = model.getFrameId("tool0")
         print("UR5e model loaded.")
 
+        # Rotvec normalization function
+        def normalize_rotvec(rotvec):
+            """
+            Ensure first non-zero component is positive.
+            Works for np.array or torch.Tensor. Returns same type.
+            """
+            is_tensor = isinstance(rotvec, torch.Tensor)
+            vec = rotvec.cpu().numpy() if is_tensor else rotvec.copy()
+
+            for i in range(3):
+                if abs(vec[i]) > 1e-8:   # first non-zero
+                    if vec[i] < 0:
+                        vec = -vec
+                    break
+                
+            if is_tensor:
+                return torch.tensor(vec, dtype=rotvec.dtype, device=rotvec.device)
+
+            return vec
+    
         # FK function: convert joint angles to end-effector pose
         def fk(q):
             q = np.array(q)
@@ -215,8 +235,8 @@ def create_torch_dataset(
             M_tool = data.oMf[tool_id]
             M_base = data.oMf[base_id]
             M = M_base.inverse() * M_tool
-            p = M.translation
-            rotvec = pin.log3(M.rotation)
+            p = M.translation   
+            rotvec = normalize_rotvec(pin.log3(M.rotation))
             return [p[0], p[1], p[2], rotvec[0], rotvec[1], rotvec[2]]
 
         # Convert action using multi-segment FK
@@ -242,13 +262,20 @@ def create_torch_dataset(
 
             return np.asarray(out, dtype=np.float32).tolist()
 
-        def convert_action_example(ex):
+        def process_example(ex):
+            # Normalize observation rotvec
+            state = ex["observation.state"]
+            state[3:6] = normalize_rotvec(state[3:6])
+            ex["observation.state"] = state
+
+            # FK + normalize action rotvec
             ex["action"] = convert_action(ex["action"])
+
             return ex
 
-        dataset.hf_dataset = dataset.hf_dataset.map(convert_action_example)
+        dataset.hf_dataset = dataset.hf_dataset.map(process_example)
         print("Action FK conversion done.")
-
+        
     print("All processing done.")
 
     if data_config.prompt_from_task:
