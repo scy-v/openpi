@@ -148,6 +148,7 @@ def create_torch_dataset(
     
     from pathlib import Path
     import pinocchio as pin
+    from tqdm import tqdm
     obs_indices = os.getenv("OBS_INDICES")
     action_slice = os.getenv("ACTION_SLICE")
     action_indices = os.getenv("ACTION_INDICES")
@@ -208,24 +209,34 @@ def create_torch_dataset(
         print("UR5e model loaded.")
 
         # Rotvec normalization function
-        def normalize_rotvec(rotvec):
-            """
-            Ensure first non-zero component is positive.
-            Works for np.array or torch.Tensor. Returns same type.
-            """
-            is_tensor = isinstance(rotvec, torch.Tensor)
-            vec = rotvec.cpu().numpy() if is_tensor else rotvec.copy()
+        def normalize_rotvec(rotvec_pre, rotvec_now):
+            if rotvec_pre is None:
+                return rotvec_now
 
-            for i in range(3):
-                if abs(vec[i]) > 1e-8:   # first non-zero
-                    if vec[i] < 0:
-                        vec = -vec
-                    break
-                
-            if is_tensor:
-                return torch.tensor(vec, dtype=rotvec.dtype, device=rotvec.device)
+            vec_now = rotvec_now.copy()
+            theta_now = np.linalg.norm(vec_now)
 
-            return vec
+            vec_pre = rotvec_pre.copy()
+            theta_pre = np.linalg.norm(vec_pre)
+
+            if theta_now < 1e-6:
+                return rotvec_pre
+
+            axis_now = vec_now / theta_now
+            axis_pre = vec_pre / theta_pre
+
+            if np.linalg.norm(rotvec_now - rotvec_pre) > np.pi:
+                if np.dot(axis_now, axis_pre) < 0:
+                    axis_now = -axis_now
+                    theta_now = 2 * np.pi - theta_now
+
+                while abs(theta_now - theta_pre) > np.pi:
+                    if theta_now < theta_pre:
+                        theta_now += 2 * np.pi
+                    else:
+                        theta_now -= 2 * np.pi
+
+            return axis_now * theta_now
     
         # FK function: convert joint angles to end-effector pose
         def fk(q):
@@ -236,7 +247,7 @@ def create_torch_dataset(
             M_base = data.oMf[base_id]
             M = M_base.inverse() * M_tool
             p = M.translation   
-            rotvec = normalize_rotvec(pin.log3(M.rotation))
+            rotvec = pin.log3(M.rotation)
             return [p[0], p[1], p[2], rotvec[0], rotvec[1], rotvec[2]]
 
         # Convert action using multi-segment FK
@@ -262,20 +273,74 @@ def create_torch_dataset(
 
             return np.asarray(out, dtype=np.float32).tolist()
 
-        def process_example(ex):
-            # Normalize observation rotvec
-            state = ex["observation.state"]
-            state[3:6] = normalize_rotvec(state[3:6])
-            ex["observation.state"] = state
+        def process_hf_dataset(hf):
+            # =========================
+            # Load columns
+            # =========================
+            states = hf["observation.state"]
+            actions = hf["action"]
+            frame_indices = hf["frame_index"]
 
-            # FK + normalize action rotvec
-            ex["action"] = convert_action(ex["action"])
+            N = len(states)
+            assert len(actions) == N
+            assert len(frame_indices) == N
 
-            return ex
+            # =========================
+            # Identify episode starts
+            # =========================
+            episode_starts = np.where(np.array(frame_indices) == 0)[0].tolist()
+            episode_starts.append(N)
+    
+            # sanity check
+            for i in range(len(episode_starts) - 1):
+                assert episode_starts[i] < episode_starts[i + 1]
 
-        dataset.hf_dataset = dataset.hf_dataset.map(process_example)
-        print("Action FK conversion done.")
+            # =========================
+            # Output buffers
+            # =========================
+            new_states = [None] * N
+            new_actions = [None] * N
+
+            # =========================
+            # Process per episode
+            # =========================
+            pbar = tqdm(range(len(episode_starts) - 1), desc="FK and norm rotvec")
+            for ep in pbar:
+                start = episode_starts[ep]
+                end = episode_starts[ep + 1]
+                pbar.set_description(f"FK and Norm Rotvec Episode {ep}")
+                pbar.set_postfix(start=start, end=end, length=end-start)
+                prev_state_rot = None
+                prev_action_rot = None
+                for i in range(start, end):
+                    state = np.array(states[i], dtype=np.float32)
+                    action = actions[i]
+
+                    # normalize state rotation
+                    rot_now = state[3:6]
+                    rot_new = normalize_rotvec(prev_state_rot, rot_now)
+                    state[3:6] = rot_new
+                    prev_state_rot = rot_new
+
+                    # convert and normalize action rotation
+                    action_fk = np.array(convert_action(action), dtype=np.float32)
+                    rot_now = action_fk[3:6]
+                    rot_new = normalize_rotvec(prev_action_rot, rot_now)
+                    action_fk[3:6] = rot_new
+                    prev_action_rot = rot_new
+                    new_states[i] = state.tolist()
+                    new_actions[i] = action_fk.tolist()
+
+            # =========================
+            # Write back to dataset
+            # =========================
+            hf = hf.remove_columns(["observation.state", "action"])
+            hf = hf.add_column("observation.state", new_states)
+            hf = hf.add_column("action", new_actions)
+            return hf
         
+        dataset.hf_dataset = process_hf_dataset(dataset.hf_dataset)
+        print("Action FK and rotvec normalization done.")
     print("All processing done.")
 
     if data_config.prompt_from_task:
