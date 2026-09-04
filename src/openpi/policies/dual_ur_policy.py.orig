@@ -47,7 +47,9 @@ class DualURInputs(transforms.DataTransformFn):
         # in a different key than "observation/image" or "observation/wrist_image",
         # you should change it below.
         # Pi0 models support three image inputs at the moment: one third-person view,
-        # and two wrist views (left and right). This dataset provides all three views.
+        # and two wrist views (left and right). If your dataset does not have a particular type
+        # of image, e.g. wrist images, you can comment it out here and replace it with zeros like we do for the
+        # right wrist image below.
         exterior_image = _parse_image(data["observation/exterior_image"])
         left_wrist_image = _parse_image(data["observation/left_wrist_image"])
         right_wrist_image = _parse_image(data["observation/right_wrist_image"])
@@ -58,6 +60,7 @@ class DualURInputs(transforms.DataTransformFn):
             "image": {
                 "base_0_rgb": exterior_image,
                 "left_wrist_0_rgb": left_wrist_image,
+                # Pad any non-existent images with zero-arrays of the appropriate shape.
                 "right_wrist_0_rgb": right_wrist_image,
             },
             "image_mask": {

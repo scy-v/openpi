@@ -62,7 +62,9 @@ OBS_INDICES=1,2,3,4,5,6,7 uv run scripts/compute_norm_stats.py --config-name pi0
 # 默认单臂 obs-tcp_pose/action-关节角转tcp_pose计算归一化
 OBS_INDICES=28,29,30,31,32,33,7 ACTION_SLICE=6,-1 URDF_PATH=urdf/ur5e/ur5e.urdf ACTION_INDICES=1,2,3,4,5,6,7 uv run scripts/compute_norm_stats.py --config-name pi05_finetune_ur5e
 # 默认单臂 obs-tcp_pose tcp_speed tcp_force/action-关节角转tcp_pose计算归一化
- OBS_INDICES=28,29,30,31,32,33,7,34,35,36,37,38,39,43,44,45,46,47,48 ACTION_SLICE=6,-1 URDF_PATH=urdf/ur5e/ur5e.urdf ACTION_INDICES=1,2,3,4,5,6,7 uv run scripts/compute_norm_stats.py --config-name pi05_full_finetune_ur5e
+OBS_INDICES=28,29,30,31,32,33,7,34,35,36,37,38,39,43,44,45,46,47,48 ACTION_SLICE=6,-1 URDF_PATH=urdf/ur5e/ur5e.urdf ACTION_INDICES=1,2,3,4,5,6,7 uv run scripts/compute_norm_stats.py --config-name pi05_full_finetune_ur5e
+# 默认单臂 全参微调 用于RL后训练 obs-tcp_pose tcp_speed tcp_force gripper_position/ action-末端增量ref-tcp
+OBS_INDICES==1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 uv run scripts/compute_norm_stats.py --config-name pi05_full_finetune_ur5e/pi05_finetune_ur5e
 ```
 ## 2.微调
 ```bash
@@ -75,6 +77,8 @@ OBS_INDICES=1,2,3,4,5,6,7 CUDA_VISIBLE_DEVICES=4,5,6,7 XLA_PYTHON_CLIENT_MEM_FRA
 OBS_INDICES=28,29,30,31,32,33,7 CUDA_VISIBLE_DEVICES=0,1,2,3 ACTION_SLICE=6,-1 URDF_PATH=urdf/ur5e/ur5e.urdf ACTION_INDICES=1,2,3,4,5,6,7 XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi05_finetune_ur5e/pi05_full_finetune_ur5e --exp-name=move_reagent_bottle_20260317_v01_tcp --overwrite
 # 默认单臂 obs-tcp_pose tcp_speed tcp_force/action-关节角转tcp_pose微调
 OBS_INDICES=28,29,30,31,32,33,7,34,35,36,37,38,39,43,44,45,46,47,48 CUDA_VISIBLE_DEVICES=0,1,2,3 ACTION_SLICE=6,-1 URDF_PATH=urdf/ur5e/ur5e.urdf ACTION_INDICES=1,2,3,4,5,6,7 XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi05_finetune_ur5e/pi05_full_finetune_ur5e --exp-name=move_reagent_bottle_20260317_v01_tcp_force --overwrite
+# 默认单臂 全参微调 用于RL后训练 obs-tcp_pose tcp_speed tcp_force gripper_position/ action-末端增量ref-tcp
+OBS_INDICES==1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 CUDA_VISIBLE_DEVICES=0,1,2,3 XLA_PYTHON_CLIENT_MEM_FRACTION=0.9 uv run scripts/train.py pi05_full_finetune_ur5e/pi05_finetune_ur5e --exp-name=insert_reagent_bottle_into_rack_20260516_v01_rl --overwrite
 ```
 
 # 推理 

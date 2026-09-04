@@ -18,6 +18,7 @@ import openpi.models.pi0_fast as pi0_fast
 import openpi.models.tokenizer as _tokenizer
 import openpi.policies.aloha_policy as aloha_policy
 import openpi.policies.droid_policy as droid_policy
+import openpi.policies.franka_policy as franka_policy
 import openpi.policies.libero_policy as libero_policy
 import openpi.policies.ur5e_policy as ur5e_policy
 import openpi.policies.dual_ur_policy as dual_ur_policy
@@ -527,6 +528,47 @@ class LeRobotUR5eDataConfig(DataConfigFactory):
             model_transforms=model_transforms,
         )
     
+@dataclasses.dataclass(frozen=True)
+class LeRobotFrankaDataConfig(DataConfigFactory):
+    """Configures transforms for Franka data stored in LeRobot format."""
+
+    extra_delta_transform: bool = True
+
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        repack_transform = _transforms.Group(
+            inputs=[
+                _transforms.RepackTransform(
+                    {
+                        "observation/image": "observation.images.exterior_image",
+                        "observation/wrist_image": "observation.images.wrist_image",
+                        "observation/state": "observation.state",
+                        "actions": "action",
+                        "prompt": "task",
+                    }
+                )
+            ]
+        )
+
+        data_transforms = _transforms.Group(
+            inputs=[franka_policy.FrankaInputs(model_type=model_config.model_type)],
+            outputs=[franka_policy.FrankaOutputs()],
+        )
+
+        if self.extra_delta_transform:
+            delta_action_mask = _transforms.make_bool_mask(6, -1)
+            data_transforms = data_transforms.push(
+                inputs=[_transforms.DeltaActions(delta_action_mask)],
+                outputs=[_transforms.AbsoluteActions(delta_action_mask)],
+            )
+
+        return dataclasses.replace(
+            self.create_base_config(assets_dirs, model_config),
+            repack_transforms=repack_transform,
+            data_transforms=data_transforms,
+            model_transforms=ModelTransformFactory()(model_config),
+        )
+
 @dataclasses.dataclass(frozen=True)
 class LeRobotDualUR5eDataConfig(DataConfigFactory):
     """
@@ -1074,38 +1116,38 @@ _CONFIGS = [
     #
     # Debugging configs.
     #
-    TrainConfig(
-        name="debug",
-        data=FakeDataConfig(),
-        batch_size=2,
-        model=pi0_config.Pi0Config(paligemma_variant="dummy", action_expert_variant="dummy"),
-        save_interval=100,
-        overwrite=True,
-        exp_name="debug",
-        num_train_steps=10,
-        wandb_enabled=False,
-    ),
-    TrainConfig(
-        name="debug_restore",
-        data=FakeDataConfig(),
-        batch_size=2,
-        model=pi0_config.Pi0Config(paligemma_variant="dummy", action_expert_variant="dummy"),
-        weight_loader=weight_loaders.CheckpointWeightLoader("./checkpoints/debug/debug/9/params"),
-        overwrite=True,
-        exp_name="debug",
-        num_train_steps=10,
-        wandb_enabled=False,
-    ),
-    TrainConfig(
-        name="debug_pi05",
-        model=pi0_config.Pi0Config(pi05=True, paligemma_variant="dummy", action_expert_variant="dummy"),
-        data=FakeDataConfig(),
-        batch_size=2,
-        num_train_steps=10,
-        overwrite=True,
-        exp_name="debug_pi05",
-        wandb_enabled=False,
-    ),
+    # TrainConfig(
+    #     name="debug",
+    #     data=FakeDataConfig(),
+    #     batch_size=2,
+    #     model=pi0_config.Pi0Config(paligemma_variant="dummy", action_expert_variant="dummy"),
+    #     save_interval=100,
+    #     overwrite=True,
+    #     exp_name="debug",
+    #     num_train_steps=10,
+    #     wandb_enabled=False,
+    # ),
+    # TrainConfig(
+    #     name="debug_restore",
+    #     data=FakeDataConfig(),
+    #     batch_size=2,
+    #     model=pi0_config.Pi0Config(paligemma_variant="dummy", action_expert_variant="dummy"),
+    #     weight_loader=weight_loaders.CheckpointWeightLoader("./checkpoints/debug/debug/9/params"),
+    #     overwrite=True,
+    #     exp_name="debug",
+    #     num_train_steps=10,
+    #     wandb_enabled=False,
+    # ),
+    # TrainConfig(
+    #     name="debug_pi05",
+    #     model=pi0_config.Pi0Config(pi05=True, paligemma_variant="dummy", action_expert_variant="dummy"),
+    #     data=FakeDataConfig(),
+    #     batch_size=2,
+    #     num_train_steps=10,
+    #     overwrite=True,
+    #     exp_name="debug_pi05",
+    #     wandb_enabled=False,
+    # ),
     #
     # RoboArena configs.
     #
@@ -1118,9 +1160,9 @@ _CONFIGS = [
         name="pi05_finetune_ur5e",
         model=pi0_config.Pi0Config(pi05=True, action_horizon=50, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
         data=LeRobotUR5eDataConfig(
-            repo_id="scylearning/move_reagent_bottle_20260317_v01",
+            repo_id="scylearning/insert_cork_20260320_v01",
             base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
-            extra_delta_transform=True,
+            extra_delta_transform=False,
         ),
         batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
         freeze_filter=pi0_config.Pi0Config(
@@ -1163,48 +1205,80 @@ _CONFIGS = [
         name="pi05_full_finetune_dual_ur",
         model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
         data=LeRobotDualUR5eDataConfig(
-            repo_id="scylearning/move_reagent_bottle_20260316_v01",
+            repo_id="scylearning/clean_test_tube_with_brush_20260712_v01",
+            # repo_id="scylearning/connect_glass_tube_to_rubber_tube_20260713_v01",
             base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
-            extra_delta_transform=True,
+            extra_delta_transform=False,
         ),
         batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
         # log_interval=1,
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=10_000,
-            peak_lr=5e-5,
-            decay_steps=1_000_000,
-            decay_lr=5e-5,
-        ),
+        # lr_schedule=_optimizer.CosineDecaySchedule(
+        #     warmup_steps=10_000,
+        #     peak_lr=5e-5,
+        #     decay_steps=1_000_000,
+        #     decay_lr=5e-5,
+        # ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
-        save_interval=10_000,
-        num_train_steps=30_000,
+        save_interval=2500,
+        num_train_steps=50_000,
     ),
     TrainConfig(
         name="pi05_full_finetune_ur5e",
         model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
         data=LeRobotUR5eDataConfig(
-            repo_id="scylearning/move_reagent_bottle_20260317_v01",
+            repo_id="scylearning/extinguish_alcohol_lamp_20260801_v01",
             base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
-            extra_delta_transform=True,
+            extra_delta_transform=False,
         ),
         batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
-        # log_interval=1,
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=10_000,
-            peak_lr=5e-5,
-            decay_steps=1_000_000,
-            decay_lr=5e-5,
-        ),
+        # lr_schedule=_optimizer.CosineDecaySchedule(
+        #     warmup_steps=10_000,
+        #     peak_lr=5e-5,
+        #     decay_steps=1_000_000,
+        #     decay_lr=5e-5,
+        # ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
-        save_interval=10_000,
+        save_interval=2_500,
+        num_train_steps=50_000,
+    ),
+    TrainConfig(
+        name="pi05_full_finetune_franka",
+        model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
+        # Franka has the same dataset schema and action semantics as the UR5e setup.
+        data=LeRobotFrankaDataConfig(
+            repo_id="scylearning/load_samples_into_centrifuge_tube_rack_20260804_v01",
+            base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
+            extra_delta_transform=False,
+        ),
+        batch_size=64,
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        save_interval=2_500,
+        num_train_steps=50_000,
+    ),
+    TrainConfig(
+        name="pi0_full_finetune_ur5e",
+        model=pi0_config.Pi0Config(pi05=False, action_horizon=50),
+        data=LeRobotUR5eDataConfig(
+            repo_id="scylearning/insert_rubber_stopper_into_reagent_bottle_20260627_v01",
+            base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
+            extra_delta_transform=False,
+        ),
+        batch_size=64, # batchsize=24 is maximum for 1x 4090D GPU/ 30_000 steps with ~32h; batchsize=128 is maximum for 1x A800 GPU/ 30_000 steps with ~300h
+        # lr_schedule=_optimizer.CosineDecaySchedule(
+        #     warmup_steps=10_000,
+        #     peak_lr=5e-5,
+        #     decay_steps=1_000_000,
+        #     decay_lr=5e-5,
+        # ),
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
+        save_interval=5_000,
         num_train_steps=30_000,
     ),
     TrainConfig(
         name="server_infer_full_finetune",
         model=pi0_config.Pi0Config(pi05=True, action_horizon=50),
         data=LeRobotUR5eDataConfig(
-            # repo_id="ur5e",
-            repo_id="scylearning/move_reagent_bottle_20260317_v01_joint",
+            repo_id="scylearning/move_reagent_bottle_no_fixed_position_20260324_v01_merged_joint",
             base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
             extra_delta_transform=True,
         ),
@@ -1213,7 +1287,7 @@ _CONFIGS = [
         name="server_infer_lora_finetune",
         model=pi0_config.Pi0Config(pi05=True, action_horizon=50, paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora"),
         data=LeRobotUR5eDataConfig(
-            repo_id="scylearning/move_reagent_bottle_20260317_v01_joint",
+            repo_id="scylearning/insert_cork_20260320_v01_joint",
             base_config=DataConfig(prompt_from_task=False, action_sequence_keys=("action",)),
             extra_delta_transform=True,
         ),
